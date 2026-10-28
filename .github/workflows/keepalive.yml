@@ -14,7 +14,10 @@ jobs:
           URL: ${{ secrets.SUPABASE_URL }}
           KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          AUTH=""
-          case "$KEY" in sb_*) ;; *) AUTH="Authorization: Bearer $KEY" ;; esac
+          HEADERS=(-H "apikey: $KEY" -H "Content-Type: application/json")
+          case "$KEY" in
+            sb_*) ;;
+            *) HEADERS+=(-H "Authorization: Bearer $KEY") ;;
+          esac
           curl -fsS -X POST "$URL/rest/v1/rpc/fuel_ping" \
-            -H "apikey: $KEY" ${AUTH:+-H "$AUTH"} -H "Content-Type: application/json" -d '{}'
+            "${HEADERS[@]}" -d '{}' 
