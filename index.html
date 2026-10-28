@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>i10 Fuel Log</title>
+<meta name="theme-color" content="#1C2321">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fuel Log">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like a dashboard cluster — odometer, log form, trends, stations, history. */
+:root {
+  --bg: #F3F4F1; --surface: #FFFFFF; --ink: #1C2321; --muted: #5F6B67; --line: #DCE0DB;
+  --accent: #D9930D; --accent-ink: #1C2321; --accent-soft: #F7E7C4;
+  --chart: #2F6F62; --chart-soft: rgba(47,111,98,.14); --good: #2F7A4A; --bad: #B3402E;
+  --panel: #1C2321; --panel-ink: #F3F4F1; --panel-cell: #2A3330; --panel-edge: #3A4541;
+  --f-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Archivo", system-ui, -apple-system, sans-serif;
+  --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #141917; --surface: #1D2422; --ink: #E8ECE9; --muted: #98A49F; --line: #2E3734;
+  --accent: #F0AD2E; --accent-ink: #161A18; --accent-soft: #3A2F17;
+  --chart: #6CC3AE; --chart-soft: rgba(108,195,174,.16); --good: #6BC58A; --bad: #EE7F6B;
+  --panel: #0C100F; --panel-ink: #E8ECE9; --panel-cell: #1A211F; --panel-edge: #2E3734;
+  color-scheme: dark } }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.wrap { max-width: 640px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px; }
+[hidden] { display: none !important; }
+h1, h2 { font-family: var(--f-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h1 { font-size: 30px; line-height: 1; }
+h2 { font-size: 21px; }
+p { margin: 0; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.sync { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--good); } .dot.off { background: var(--bad); }
+
+.cluster { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-edge); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.odo { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.odo span { font-family: var(--f-num); font-weight: 700; font-size: clamp(24px, 8vw, 36px); background: var(--panel-cell); border: 1px solid var(--panel-edge); padding: 2px 6px; border-radius: 4px; min-width: 1.1em; text-align: center; }
+.odo .unit { background: none; border: 0; font-size: 16px; color: var(--accent); min-width: 0; padding-left: 8px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat b { display: block; font-family: var(--f-num); font-size: 19px; font-weight: 700; }
+.stat small { font-size: 11px; opacity: .7; text-transform: uppercase; letter-spacing: .08em; }
+.stat i { font-style: normal; font-size: 12px; opacity: .7; display: block; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label, .lbl { font-size: 12px; font-weight: 600; color: var(--muted); }
+.field input, .field select { font: 500 16px var(--f-num); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
+.field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field.wide { grid-column: 1 / -1; }
+.field.wide input, .field select { font-family: var(--f-body); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.hint { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+.hint.err { color: var(--bad); }
+.btn { font: 600 16px var(--f-body); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 12px 18px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-size: 14px; padding: 9px 14px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible, .link:focus-visible, .tab:focus-visible, .chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip, .tab { font: 600 13px var(--f-body); padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"], .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.chartbox { overflow-x: auto; }
+svg text { font-family: var(--f-num); font-size: 13px; fill: var(--muted); }
+.example { font-size: 12px; background: var(--accent-soft); color: var(--ink); padding: 6px 10px; border-radius: 6px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; padding: 6px 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: top; font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.main td { border-bottom: 0; padding-bottom: 2px; }
+td.meta { font-family: var(--f-body); white-space: normal; color: var(--muted); font-size: 12px; padding-top: 0; }
+td.r, th.r { text-align: right; }
+.link { background: none; border: 0; color: var(--muted); font: 500 12px var(--f-body); cursor: pointer; padding: 2px 4px; text-decoration: underline; }
+.link.danger { color: var(--bad); }
+.empty { color: var(--muted); font-size: 14px; }
+
+.stations { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.stations li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.stations li:last-child { border-bottom: 0; }
+.stations .name { font-weight: 600; overflow-wrap: anywhere; }
+.stations .price { font-family: var(--f-num); font-weight: 700; text-align: right; }
+.stations .sub { font-size: 12px; color: var(--muted); }
+.stations .best .price { color: var(--good); }
+.badge { font: 600 10px var(--f-body); text-transform: uppercase; letter-spacing: .08em; background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+.links { display: flex; gap: 8px; flex-wrap: wrap; }
+.links a { color: var(--ink); font-weight: 600; font-size: 14px; }
+
+/* gate screens */
+.gate { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; gap: 18px; max-width: 420px; margin: 0 auto; width: 100%; }
+.gate .field input { font-size: 20px; letter-spacing: .08em; }
+code { font-family: var(--f-num); font-size: 13px; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+footer { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Shown when config.js is still empty -->
+  <section class="gate" id="setupGate" hidden>
+    <div><div class="eyebrow">Almost there</div><h1>Connect the database</h1></div>
+    <p>Open <code>config.js</code> and fill in your Supabase Project URL and anon key. The steps are in <code>README.md</code>.</p>
+  </section>
+
+  <!-- PIN screen -->
+  <form class="gate" id="pinGate" hidden novalidate>
+    <div><div class="eyebrow" id="carLabel2">Hyundai i10 · 2018</div><h1>Fuel Log</h1></div>
+    <div class="field"><label for="pinInput">Household PIN</label>
+      <input id="pinInput" type="password" autocomplete="current-password" required></div>
+    <div class="field"><span class="lbl">Who's using this phone?</span><div class="chips" id="pinDrivers"></div></div>
+    <div class="row"><span class="hint" id="pinHint" role="status"></span><button class="btn" id="pinBtn" type="submit">Open log</button></div>
+  </form>
+
+  <div id="app" hidden style="display:contents">
+    <header>
+      <div><div class="eyebrow" id="carLabel">Hyundai i10 · 2018</div><h1>Fuel Log</h1></div>
+      <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+    </header>
+
+    <section class="cluster" aria-label="Current reading">
+      <div class="eyebrow" style="color:inherit;opacity:.7">Odometer</div>
+      <div class="odo" id="odo"></div>
+      <div class="stats">
+        <div class="stat"><small>Average</small><b id="sAvg">–</b><i id="sAvg2">L/100 km</i></div>
+        <div class="stat"><small>This month</small><b id="sMonth">–</b><i>km driven</i></div>
+        <div class="stat"><small>Avg price</small><b id="sPrice">–</b><i>€ per litre</i></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="logH">
+      <div class="row"><h2 id="logH">Log a fill-up</h2><span class="muted" style="font-size:13px" id="asDriver"></span></div>
+      <form id="form" novalidate>
+        <div class="grid">
+          <div class="field"><label for="fDate">Date</label><input id="fDate" type="date" required></div>
+          <div class="field"><label for="fOdo">Odometer (km)</label><input id="fOdo" type="number" inputmode="numeric" min="0" step="1" placeholder="84312" required></div>
+          <div class="field"><label for="fLit">Litres</label><input id="fLit" type="number" inputmode="decimal" min="0" step="0.01" placeholder="31.40" required></div>
+          <div class="field"><label for="fCost">Total paid (€)</label><input id="fCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="61.85" required></div>
+          <div class="field wide"><label for="fStation">Station</label><input id="fStation" type="text" list="stationList" placeholder="e.g. Tango Nieuwegein" autocomplete="off"><datalist id="stationList"></datalist></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label class="check"><input id="fFull" type="checkbox" checked> Filled to full</label>
+          <label class="check"><input id="fLoc" type="checkbox"> Save station location</label>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <span class="hint" id="hint" role="status"></span>
+          <span class="num muted" id="perL" style="font-size:13px"></span>
+          <button class="btn" id="saveBtn" type="submit">Save fill-up</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="chH">
+      <div class="row">
+        <h2 id="chH">Trends</h2>
+        <div class="chips" role="tablist">
+          <button class="tab" role="tab" data-c="month" aria-selected="true">km / month</button>
+          <button class="tab" role="tab" data-c="odo" aria-selected="false">Mileage</button>
+          <button class="tab" role="tab" data-c="eff" aria-selected="false">L/100 km</button>
+          <button class="tab" role="tab" data-c="price" aria-selected="false">€ / L</button>
+        </div>
+      </div>
+      <div class="example" id="exampleNote" hidden>Example data. Your own numbers replace this from the second fill-up.</div>
+      <div class="chartbox" id="chart"></div>
+    </section>
+
+    <section class="card" aria-labelledby="nH">
+      <div class="row"><h2 id="nH">Cheapest near you</h2><button class="btn ghost" id="locBtn" type="button">Use my location</button></div>
+      <p class="muted" style="font-size:13px" id="nearIntro">Stations you've filled up at, ranked by the last price you paid. Turn on "Save station location" when logging to see distances here.</p>
+      <ul class="stations" id="stations"></ul>
+      <div class="links">
+        <a id="mapsLink" href="https://www.google.com/maps/search/tankstation" target="_blank" rel="noopener">Petrol stations on Google Maps ↗</a>
+        <a href="https://www.fuel-prices.eu/near-me/nl" target="_blank" rel="noopener">Today's prices nearby ↗</a>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="hH">
+      <h2 id="hH">History</h2>
+      <div style="overflow-x:auto"><table id="hist"></table></div>
+    </section>
+
+    <footer>
+      <button class="btn ghost" id="csvBtn" type="button">Export CSV</button>
+      <button class="btn ghost" id="switchBtn" type="button">Switch driver</button>
+      <button class="btn ghost" id="lockBtn" type="button">Lock this phone</button>
+    </footer>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
