@@ -3,7 +3,7 @@
 //   supabaseUrl     = Project URL, e.g. https://abcdefghijkl.supabase.co
 //   supabaseAnonKey = the anon / publishable key (safe to put in a website; the PIN protects the data)
 window.FUEL_CONFIG = {
-  supabaseUrl: "https://vpxtmzygzqkpegacpewd.supabase.co/rest/v1/",
+  supabaseUrl: "https://vpxtmzygzqkpegacpewd.supabase.co",
   supabaseAnonKey: "sb_publishable_AkVItyFt7eYRYMXJ06LPJw_hbTTSx4d",
   car: "Hyundai i10 · 2018",
   tankLiters: 40,
