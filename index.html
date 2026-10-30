@@ -70,6 +70,7 @@ header { display: flex; justify-content: space-between; align-items: flex-end; g
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field label, .lbl { font-size: 12px; font-weight: 600; color: var(--muted); }
 .field input, .field select { font: 500 16px var(--f-num); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
+.field input[type="date"] { min-width: 0; max-width: 100%; }
 .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .field.wide { grid-column: 1 / -1; }
 .field.wide input, .field select { font-family: var(--f-body); }
