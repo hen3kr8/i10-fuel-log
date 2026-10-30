@@ -16,11 +16,11 @@ Setup takes about 20 minutes, and you only do it once. Babette only needs the li
    - Name: `i10-fuel-log`. Region: a European one (e.g. *Central EU (Frankfurt)*). Choose and save a database password; the app doesn't use it.
 2. When the project is ready, open **SQL Editor → New query**, paste the whole of `supabase/schema.sql` and click **Run**.
    You should see "Success. No rows returned".
-3. Set the household PIN in a **new query** (use at least 6 characters; a short phrase is best):
+3. Set the household passphrase in a **new query** (use at least 12 characters; a unique phrase made from several random words is much stronger than a short numeric PIN):
    ```sql
    select private.set_pin('your own pin here');
    ```
-   Run the same line again any time to change the PIN. Both phones will then ask for the new one.
+   Run the same line again any time to change the passphrase. If you already set up the database using an earlier version of the schema, rerun the updated `supabase/schema.sql` first so the 12-character minimum is enforced. On each phone, use **Lock this phone** to enter the new passphrase.
 4. Open **Project Settings → API Keys** (on older dashboards: **Settings → API**) and copy:
    - the **Project URL**, e.g. `https://abcdefghijkl.supabase.co` (also shown under **Data API**)
    - the **publishable** key (`sb_publishable_…`), or on older projects the **anon public** key (`eyJ…`)
@@ -101,8 +101,8 @@ order by odometer_km desc;
 
 - The table can't be read or written directly through the API (row-level security is on, with no grants).
 - `fuel_list`, `fuel_add` and `fuel_delete` only work with the right PIN. The PIN is stored as a bcrypt hash.
-- After 10 wrong PINs within 15 minutes, every PIN check is refused for 15 minutes.
-- Anyone with the link *and* the PIN can see and change the log, so share both only with each other.
+- After 10 wrong passphrases within 15 minutes, every PIN check is refused for 15 minutes.
+- Anyone with the link *and* the passphrase can see and change the log, so share both only with each other.
 
 ## Files
 

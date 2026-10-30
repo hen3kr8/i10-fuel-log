@@ -7,6 +7,7 @@
 --   * The fillups table is locked (RLS on, no policies, no grants).
 --   * The app talks to three functions (fuel_list, fuel_add, fuel_delete) that check the PIN first.
 --   * After 10 wrong PINs within 15 minutes, all PIN checks are refused for 15 minutes.
+--   * Set a unique passphrase of at least 12 characters, not a short numeric PIN.
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -45,8 +46,8 @@ create table if not exists private.pin_failures (
 create or replace function private.set_pin(p_pin text)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
-  if p_pin is null or char_length(p_pin) < 6 then
-    raise exception 'Use a PIN or passphrase of at least 6 characters';
+  if p_pin is null or char_length(p_pin) < 12 then
+    raise exception 'Use a passphrase of at least 12 characters';
   end if;
   insert into private.app_pin (id, pin_hash)
   values (1, extensions.crypt(p_pin, extensions.gen_salt('bf', 10)))
@@ -122,5 +123,5 @@ revoke all on function public.fuel_ping() from public;
 grant execute on function public.fuel_ping() to anon, authenticated;
 
 -- ---------- set your PIN ----------
--- Run this once on its own, with your own PIN (6+ characters; a short phrase is best):
+-- Run this once on its own, with a unique passphrase of at least 12 characters:
 -- select private.set_pin('change-me-please');

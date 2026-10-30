@@ -64,6 +64,9 @@ header { display: flex; justify-content: space-between; align-items: flex-end; g
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 420px) {
+  .grid > .field:nth-child(-n+2) { grid-column: 1 / -1; }
+}
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field label, .lbl { font-size: 12px; font-weight: 600; color: var(--muted); }
 .field input, .field select { font: 500 16px var(--f-num); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
