@@ -15,6 +15,7 @@
   let driver = store.get("driver") || "";
   let chartKind = "month";
   let pendingDelete = null;
+  let editingId = null;           // id of the fill-up being edited, or null when adding
   let here = null;                // {lat, lon} once the person taps "Use my location"
 
   $("carLabel").textContent = $("carLabel2").textContent = CFG.car;
@@ -249,7 +250,7 @@
       const meta = [dist ? "+" + nf(dist) + " km" : "first entry", "€ " + nf(e.cost, 2), e.station, e.driver, e.full ? "" : "partial fill"].filter(Boolean).join(" · ");
       const btns = pendingDelete === e.id
         ? '<button class="link danger" data-del="' + e.id + '">Delete</button><button class="link" data-cancel="1">Keep</button>'
-        : '<button class="link" data-ask="' + e.id + '">Remove</button>';
+        : '<button class="link" data-edit="' + e.id + '">Edit</button><button class="link" data-ask="' + e.id + '">Remove</button>';
       h += '<tr class="main"><td>' + e.date.slice(8) + "-" + e.date.slice(5, 7) + "-" + e.date.slice(2, 4) + '</td><td class="r">' + nf(e.odometer) + '</td><td class="r">' + nf(e.liters, 2) + '</td><td class="r">' + nf(e.cost / e.liters, 3) + '</td><td class="r">' + eff + "</td></tr>" +
         '<tr><td colspan="5" class="meta"><div class="row" style="gap:6px"><span>' + esc(meta) + "</span><span>" + btns + "</span></div></td></tr>";
     });
@@ -263,7 +264,8 @@
     document.querySelectorAll(".tab").forEach((o) => o.setAttribute("aria-selected", String(o === b)));
     render();
   }));
-  const updatePerL = () => { const l = parseFloat($("fLit").value), c = parseFloat($("fCost").value); $("perL").textContent = l > 0 && c > 0 ? "€ " + nf(c / l, 3) + " / L" : ""; };
+  const num = (v) => parseFloat(String(v).trim().replace(",", "."));   // accepts "31,40" and "31.40"
+  const updatePerL = () => { const l = num($("fLit").value), c = num($("fCost").value); $("perL").textContent = l > 0 && c > 0 ? "€ " + nf(c / l, 3) + " / L" : ""; };
   $("fLit").addEventListener("input", updatePerL); $("fCost").addEventListener("input", updatePerL);
   $("fLoc").checked = store.get("saveLoc") === "1";
   $("fLoc").addEventListener("change", () => store.set("saveLoc", $("fLoc").checked ? "1" : "0"));
@@ -278,11 +280,12 @@
 
   $("form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const rec = { date: $("fDate").value, odometer: Math.round(+$("fOdo").value), liters: +$("fLit").value, cost: +$("fCost").value, full: $("fFull").checked, station: $("fStation").value.trim() };
+    const rec = { date: $("fDate").value, odometer: Math.round(+$("fOdo").value), liters: num($("fLit").value), cost: num($("fCost").value), full: $("fFull").checked, station: $("fStation").value.trim() };
     if (!rec.date || !(rec.odometer > 0) || !(rec.liters > 0) || !(rec.cost > 0)) return hint("Fill in date, odometer, litres and total paid.", true);
     if (rec.liters > CFG.tankLiters + 5) return hint("That's more than the tank holds (about " + CFG.tankLiters + " L). Check the litres.", true);
-    const before = entries.filter((e) => e.date <= rec.date).pop();
-    const after = entries.find((e) => e.date > rec.date);
+    const others = entries.filter((e) => e.id !== editingId);
+    const before = others.filter((e) => e.date <= rec.date).pop();
+    const after = others.find((e) => e.date > rec.date);
     if (before && rec.odometer <= before.odometer) return hint("The odometer must be higher than " + nf(before.odometer) + " km (" + before.date + ").", true);
     if (after && rec.odometer >= after.odometer) return hint("The odometer must be lower than " + nf(after.odometer) + " km (" + after.date + ").", true);
     $("saveBtn").disabled = true;
@@ -290,6 +293,13 @@
       let pos = null;
       if ($("fLoc").checked) { hint("Getting location…"); pos = await getPosition(); }
       hint("Saving…");
+      if (editingId) {
+        await api("fuel_update", { p_id: editingId, p_filled_on: rec.date, p_odometer_km: rec.odometer, p_liters: rec.liters, p_cost_eur: rec.cost, p_full_tank: rec.full,
+          p_station: rec.station || null, p_lat: pos && pos.lat, p_lon: pos && pos.lon });
+        stopEdit(); hint("Fill-up updated.");
+        await refresh();
+        return;
+      }
       await api("fuel_add", { p_filled_on: rec.date, p_odometer_km: rec.odometer, p_liters: rec.liters, p_cost_eur: rec.cost, p_full_tank: rec.full,
         p_station: rec.station || null, p_driver: driver || null, p_lat: pos && pos.lat, p_lon: pos && pos.lon });
       hint("Saved. " + (before ? "+" + nf(rec.odometer - before.odometer) + " km since the last fill-up." : "First entry logged.") + ($("fLoc").checked && !pos ? " (Location wasn't available.)" : ""));
@@ -300,9 +310,27 @@
     finally { $("saveBtn").disabled = false; }
   });
 
+  function stopEdit() {
+    editingId = null;
+    ["fOdo", "fLit", "fCost", "fStation"].forEach((id) => ($(id).value = ""));
+    $("fFull").checked = true; $("fDate").value = today(); updatePerL();
+    $("saveBtn").textContent = "Save fill-up"; $("cancelEditBtn").hidden = true; $("logH").textContent = "Log a fill-up";
+  }
+  $("cancelEditBtn").addEventListener("click", () => { stopEdit(); hint(""); });
+
   $("hist").addEventListener("click", async (ev) => {
     const b = ev.target.closest("button"); if (!b) return;
-    if (b.dataset.ask) { pendingDelete = b.dataset.ask; renderHistory(); }
+    if (b.dataset.edit) {
+      const e = entries.find((x) => x.id === b.dataset.edit); if (!e) return;
+      editingId = e.id; pendingDelete = null; renderHistory();
+      $("fDate").value = e.date; $("fOdo").value = e.odometer;
+      $("fLit").value = String(e.liters).replace(".", ","); $("fCost").value = String(e.cost).replace(".", ",");
+      $("fStation").value = e.station; $("fFull").checked = e.full; updatePerL();
+      $("saveBtn").textContent = "Update fill-up"; $("cancelEditBtn").hidden = false; $("logH").textContent = "Edit fill-up";
+      hint("Editing the fill-up from " + e.date + ". Location is kept unless you tick “Save station location”.");
+      $("form").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    else if (b.dataset.ask) { pendingDelete = b.dataset.ask; renderHistory(); }
     else if (b.dataset.cancel) { pendingDelete = null; renderHistory(); }
     else if (b.dataset.del) {
       b.disabled = true;

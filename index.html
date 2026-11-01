@@ -160,8 +160,8 @@ footer { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
         <div class="grid">
           <div class="field"><label for="fDate">Date</label><input id="fDate" type="date" required></div>
           <div class="field"><label for="fOdo">Odometer (km)</label><input id="fOdo" type="number" inputmode="numeric" min="0" step="1" placeholder="84312" required></div>
-          <div class="field"><label for="fLit">Litres</label><input id="fLit" type="number" inputmode="decimal" min="0" step="0.01" placeholder="31.40" required></div>
-          <div class="field"><label for="fCost">Total paid (€)</label><input id="fCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="61.85" required></div>
+          <div class="field"><label for="fLit">Litres</label><input id="fLit" type="text" inputmode="decimal" autocomplete="off" placeholder="31.40" required></div>
+          <div class="field"><label for="fCost">Total paid (€)</label><input id="fCost" type="text" inputmode="decimal" autocomplete="off" placeholder="61.85" required></div>
           <div class="field wide"><label for="fStation">Station</label><input id="fStation" type="text" list="stationList" placeholder="e.g. Tango Nieuwegein" autocomplete="off"><datalist id="stationList"></datalist></div>
         </div>
         <div class="row" style="margin-top:12px">
@@ -171,6 +171,7 @@ footer { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
         <div class="row" style="margin-top:12px">
           <span class="hint" id="hint" role="status"></span>
           <span class="num muted" id="perL" style="font-size:13px"></span>
+          <button class="btn" id="cancelEditBtn" type="button" hidden style="background:transparent;color:var(--ink);border:1px solid var(--line)">Cancel</button>
           <button class="btn" id="saveBtn" type="submit">Save fill-up</button>
         </div>
       </form>

@@ -14,10 +14,19 @@ jobs:
           URL: ${{ secrets.SUPABASE_URL }}
           KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
+          # strip stray whitespace/newlines/quotes that sneak in when pasting secrets
+          URL=$(printf '%s' "$URL" | tr -d ' \t\r\n"'"'"'')
+          KEY=$(printf '%s' "$KEY" | tr -d ' \t\r\n"'"'"'')
+          URL="${URL%/}"
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_KEY secret is empty or missing"; exit 1
+          fi
+          case "$URL" in https://*.supabase.co) ;; *) echo "::error::SUPABASE_URL must look like https://<ref>.supabase.co (got host: ${URL#*//})"; exit 1 ;; esac
           HEADERS=(-H "apikey: $KEY" -H "Content-Type: application/json")
           case "$KEY" in
             sb_*) ;;
             *) HEADERS+=(-H "Authorization: Bearer $KEY") ;;
           esac
-          curl -fsS -X POST "$URL/rest/v1/rpc/fuel_ping" \
-            "${HEADERS[@]}" -d '{}' 
+          code=$(curl -sS -o body.txt -w '%{http_code}' -X POST "$URL/rest/v1/rpc/fuel_ping" "${HEADERS[@]}" -d '{}')
+          echo "HTTP $code"; cat body.txt; echo
+          [ "$code" = "200" ]

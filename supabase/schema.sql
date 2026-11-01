@@ -5,7 +5,7 @@
 -- How access works:
 --   * The browser only has the public "anon" key, which on its own can read or write nothing.
 --   * The fillups table is locked (RLS on, no policies, no grants).
---   * The app talks to three functions (fuel_list, fuel_add, fuel_delete) that check the PIN first.
+--   * The app talks to functions (fuel_list, fuel_add, fuel_update, fuel_delete) that check the PIN first.
 --   * After 10 wrong PINs within 15 minutes, all PIN checks are refused for 15 minutes.
 --   * Set a unique passphrase of at least 12 characters, not a short numeric PIN.
 
@@ -96,6 +96,23 @@ begin
   return jsonb_build_object('ok', true, 'data', to_jsonb(r));
 end $$;
 
+create or replace function public.fuel_update(
+  p_pin text, p_id uuid, p_filled_on date, p_odometer_km integer, p_liters numeric, p_cost_eur numeric,
+  p_full_tank boolean default true, p_station text default null,
+  p_lat double precision default null, p_lon double precision default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare e text := private.pin_error(p_pin); r public.fillups;
+begin
+  if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+  -- lat/lon are only replaced when new coordinates are given
+  update public.fillups set filled_on = p_filled_on, odometer_km = p_odometer_km,
+         liters = round(p_liters, 2), cost_eur = round(p_cost_eur, 2), full_tank = coalesce(p_full_tank, true),
+         station = nullif(trim(p_station), ''), lat = coalesce(p_lat, lat), lon = coalesce(p_lon, lon)
+   where id = p_id returning * into r;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  return jsonb_build_object('ok', true, 'data', to_jsonb(r));
+end $$;
+
 create or replace function public.fuel_delete(p_pin text, p_id uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare e text := private.pin_error(p_pin);
@@ -115,9 +132,11 @@ $$;
 revoke all on all functions in schema private from public, anon, authenticated;
 revoke all on function public.fuel_list(text) from public;
 revoke all on function public.fuel_add(text, date, integer, numeric, numeric, boolean, text, text, double precision, double precision) from public;
+revoke all on function public.fuel_update(text, uuid, date, integer, numeric, numeric, boolean, text, double precision, double precision) from public;
 revoke all on function public.fuel_delete(text, uuid) from public;
 grant execute on function public.fuel_list(text) to anon, authenticated;
 grant execute on function public.fuel_add(text, date, integer, numeric, numeric, boolean, text, text, double precision, double precision) to anon, authenticated;
+grant execute on function public.fuel_update(text, uuid, date, integer, numeric, numeric, boolean, text, double precision, double precision) to anon, authenticated;
 grant execute on function public.fuel_delete(text, uuid) to anon, authenticated;
 revoke all on function public.fuel_ping() from public;
 grant execute on function public.fuel_ping() to anon, authenticated;
