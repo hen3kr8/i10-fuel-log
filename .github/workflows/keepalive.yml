@@ -17,7 +17,8 @@ jobs:
           # strip stray whitespace/newlines/quotes that sneak in when pasting secrets
           URL=$(printf '%s' "$URL" | tr -d ' \t\r\n"'"'"'')
           KEY=$(printf '%s' "$KEY" | tr -d ' \t\r\n"'"'"'')
-          URL="${URL%/}"
+          # keep only scheme://host, in case the secret was pasted with /rest/v1 or a trailing slash
+          URL=$(printf '%s' "$URL" | sed -E 's#^(https://[^/]+).*#\1#')
           if [ -z "$URL" ] || [ -z "$KEY" ]; then
             echo "::error::SUPABASE_URL or SUPABASE_KEY secret is empty or missing"; exit 1
           fi
