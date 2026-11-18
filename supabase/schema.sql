@@ -123,9 +123,18 @@ begin
 end $$;
 
 -- keep-alive: touches the database without revealing anything (used by the daily GitHub Action)
+-- It writes a row: Supabase did not treat a read-only ping as activity and still warned about pausing.
+create table if not exists private.heartbeat (
+  id       int primary key default 1 check (id = 1),
+  last_at  timestamptz not null default now(),
+  pings    bigint not null default 0
+);
+
 create or replace function public.fuel_ping()
 returns jsonb language sql security definer set search_path = '' as $$
-  select jsonb_build_object('ok', true, 'data', (select count(*) > -1 from public.fillups));
+  insert into private.heartbeat as h (id, last_at, pings) values (1, now(), 1)
+  on conflict (id) do update set last_at = now(), pings = h.pings + 1
+  returning jsonb_build_object('ok', true, 'data', h.pings);
 $$;
 
 -- only the API functions are callable from the browser
